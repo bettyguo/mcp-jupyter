@@ -62,6 +62,48 @@ def test_health_fails_with_no_token() -> None:
     assert r.exit_code == 2
 
 
+def test_mcp_install_with_token_env_warns_about_inheritance(
+    tmp_path, monkeypatch
+) -> None:
+    """Regression for S-3: --token-env reads from os.environ at runtime,
+    but MCP clients (Claude Desktop, Cursor) spawn the binary with a restricted
+    environment. Silent auth failure on first agent call. Install command
+    should warn the user.
+    """
+    from mcp_jupyter_kernel import install as install_mod
+
+    out_path = tmp_path / "test.json"
+    monkeypatch.setattr(
+        install_mod,
+        "KNOWN_TARGETS",
+        {
+            "cursor": lambda: install_mod.InstallTarget(
+                "cursor", out_path, "Cursor (test)"
+            )
+        },
+    )
+    r = runner.invoke(
+        app,
+        [
+            "mcp",
+            "install",
+            "--client",
+            "cursor",
+            "--mode",
+            "server",
+            "--jupyter-url",
+            "http://localhost:8888",
+            "--token-env",
+            "JUPYTER_TOKEN",
+        ],
+    )
+    assert r.exit_code == 0
+    # The warning should mention that the MCP client may not inherit env vars.
+    combined = (r.stdout or "") + (r.stderr or "")
+    assert "JUPYTER_TOKEN" in combined
+    assert "env" in combined.lower() or "environment" in combined.lower()
+
+
 def test_mcp_install_all_exits_nonzero_when_any_target_fails(
     tmp_path, monkeypatch
 ) -> None:

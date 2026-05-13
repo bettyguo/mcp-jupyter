@@ -187,6 +187,17 @@ def mcp_install(
     resolved_binary = binary or discover_binary()
     entry = build_server_entry(mode, resolved_binary, jupyter_url, jupyter_token_env, notebook)
 
+    if mode == "server" and jupyter_token_env:
+        typer.echo(
+            f"  ! note: --token-env {jupyter_token_env} reads from the binary's "
+            f"environment at startup. Many MCP clients (Claude Desktop, Cursor) "
+            f"spawn the server with a restricted environment that does NOT "
+            f"inherit the user's shell vars. If auth fails, either: (a) add "
+            f"{jupyter_token_env!r} explicitly under `env` in the client's "
+            f"config, or (b) re-run install with `--token <literal>` (less safe).",
+            err=True,
+        )
+
     if client == "claude-code":
         typer.echo(claude_code_hint(name, resolved_binary, mode, jupyter_url))
         return
