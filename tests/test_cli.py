@@ -60,3 +60,52 @@ def test_health_fails_with_no_token() -> None:
     r = runner.invoke(app, ["health", "--url", "http://localhost:8888"])
     # No token configured → resolve_token raises → health exits 2.
     assert r.exit_code == 2
+
+
+def test_mcp_install_all_exits_nonzero_when_any_target_fails(
+    tmp_path, monkeypatch
+) -> None:
+    """Regression for C-3: `mcp install --client all` previously swallowed
+    per-target failures and still exited 0. Now any target failure → exit 1.
+
+    Note on isolation: env-var monkeypatching is insufficient because
+    Path.home() on Windows uses USERPROFILE / HOMEDRIVE, not HOME. We swap
+    KNOWN_TARGETS directly so every path lands under tmp_path.
+    """
+    from mcp_jupyter_kernel import install as install_mod
+
+    bad_path = tmp_path / "bad" / "config.json"
+    good1 = tmp_path / "good1" / "config.json"
+    good2 = tmp_path / "good2" / "config.json"
+    bad_path.parent.mkdir(parents=True, exist_ok=True)
+    bad_path.write_text("not valid json {{{", encoding="utf-8")
+
+    fake_targets = {
+        "claude-desktop": lambda: install_mod.InstallTarget(
+            "claude-desktop", bad_path, "Claude Desktop (test)"
+        ),
+        "cursor": lambda: install_mod.InstallTarget("cursor", good1, "Cursor (test)"),
+        "cline": lambda: install_mod.InstallTarget("cline", good2, "Cline (test)"),
+    }
+    monkeypatch.setattr(install_mod, "KNOWN_TARGETS", fake_targets)
+
+    r = runner.invoke(
+        app,
+        [
+            "mcp",
+            "install",
+            "--client",
+            "all",
+            "--mode",
+            "server",
+            "--jupyter-url",
+            "http://localhost:8888",
+        ],
+    )
+    # Cursor + Cline succeed; Claude Desktop fails. Overall: non-zero.
+    assert r.exit_code != 0, (
+        f"expected non-zero exit when any target fails; got {r.exit_code}\n{r.stdout}"
+    )
+    # Make sure the successful targets DID get written even though one failed.
+    assert good1.exists()
+    assert good2.exists()

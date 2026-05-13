@@ -203,6 +203,7 @@ def mcp_install(
         )
         raise typer.Exit(code=2)
 
+    failures = 0
     for tname in targets_to_install:
         target = KNOWN_TARGETS[tname]()
         try:
@@ -210,6 +211,9 @@ def mcp_install(
             typer.echo(f"wrote {target.description} config: {written}")
         except Exception as e:
             typer.echo(f"  ! {target.description}: {e}", err=True)
+            failures += 1
+    if failures:
+        raise typer.Exit(code=1)
 
 
 @mcp_app.command("show")
