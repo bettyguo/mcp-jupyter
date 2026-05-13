@@ -1,0 +1,67 @@
+# mcp-jupyter
+
+> The kernel-aware Jupyter MCP server. Your agent sees your variables, not just your `.ipynb` JSON.
+
+**Status:** Pre-alpha — Phase 0 complete, design starts next. Not usable yet. See [STATUS.md](STATUS.md).
+
+`mcp-jupyter` is an [MCP](https://modelcontextprotocol.io) server focused on what existing Jupyter MCP servers don't do: surface **live kernel state** to the agent. Variables, dataframe summaries, plot images, tracebacks — the stuff your agent actually needs to reason about your notebook.
+
+Existing Jupyter MCP servers (notably [Datalayer's `jupyter-mcp-server`](https://github.com/datalayer/jupyter-mcp-server), the production leader) cover cell CRUD and execution well. They don't proactively surface kernel state. They also assume you have a Jupyter server running. We fill both gaps.
+
+## What this is vs isn't
+
+- **Is:** kernel introspection (variables, `df.head()`, `df.describe()`), plot capture, traceback explanation, post-mortem inspection, and a **standalone mode** that spawns a kernel without any Jupyter server in the loop. Lean 8–10 tool surface tuned for agent tool-calling.
+- **Isn't:** a replacement for Datalayer's server when all you need is cell CRUD. Not a notebook editor. Not a JupyterLab competitor.
+
+## What it does (planned for v1)
+
+- Read and edit cells in a notebook open in your running Jupyter Lab / Notebook 7.
+- Execute cells and stream output back.
+- Inspect kernel state — list variables, get a dataframe's shape + head, eval expressions.
+- Capture matplotlib / plotly plots as images for the agent to look at.
+- Surface the last traceback when something blew up.
+- Standalone mode: run a notebook headlessly without any Jupyter UI.
+
+## Privacy posture
+
+By default, `mcp-jupyter` returns **summaries**, not raw data. `df.head(5)` and `df.describe()`, not the full dataframe. Explicit opt-in tools (`data.value`) exist for raw values; the LLM is warned that the result may contain sensitive data. Full design in [docs/privacy.md](docs/privacy.md).
+
+## Quickstart
+
+```bash
+pip install mcp-jupyter-kernel
+
+# Wire into Claude Desktop (server mode):
+export JUPYTER_TOKEN=mysecret
+mcp-jupyter-kernel mcp install --client claude-desktop \
+  --mode server --jupyter-url http://localhost:8888 --token-env JUPYTER_TOKEN
+
+# Or standalone (no Jupyter server needed):
+mcp-jupyter-kernel mcp install --client claude-desktop \
+  --mode standalone --notebook /path/to/my_analysis.ipynb
+
+# Restart your MCP client. The 10 tools show up.
+```
+
+Full install + troubleshooting: [docs/install.md](docs/install.md).
+
+## What the agent can do
+
+```
+notebooks.list_open()              # find currently-open notebooks
+cells.read_recent(notebook_id, n)  # last N cells with outputs
+cells.insert(notebook_id, after_index, code)
+execute.cell(notebook_id, idx)     # persisted to the notebook
+execute.code(notebook_id, code)    # ephemeral, not stored
+execute.cancel(notebook_id)        # interrupt
+kernel.list_variables(notebook_id) # names + types + sizes — NEVER values
+inspect(notebook_id, target, mode) # auto | summary | value
+plots.capture_last(notebook_id)    # PNG base64
+debug.last_traceback(notebook_id)  # last exception
+```
+
+See [docs/tools.md](docs/tools.md) for full schemas.
+
+## License
+
+BSD-3-Clause. Matches the wider Jupyter ecosystem.
