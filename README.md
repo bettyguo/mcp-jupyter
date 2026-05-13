@@ -28,9 +28,17 @@ By default, `mcp-jupyter` returns **summaries**, not raw data. `df.head(5)` and 
 
 ## Quickstart
 
-```bash
-pip install mcp-jupyter-kernel
+> Pre-alpha — **not yet on PyPI.** Install from source:
+>
+> ```bash
+> git clone https://github.com/bettyguo/mcp-jupyter.git
+> cd mcp-jupyter
+> pip install -e .
+> ```
 
+Once installed:
+
+```bash
 # Wire into Claude Desktop (server mode):
 export JUPYTER_TOKEN=mysecret
 mcp-jupyter-kernel mcp install --client claude-desktop \

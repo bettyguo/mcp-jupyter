@@ -1,8 +1,18 @@
 # Installing mcp-jupyter-kernel
 
-Pre-alpha. APIs may change before v1.
+Pre-alpha. APIs may change before v1. **Not yet published to PyPI.**
 
 ## Install the binary
+
+From source (current path):
+
+```bash
+git clone https://github.com/bettyguo/mcp-jupyter.git
+cd mcp-jupyter
+pip install -e .
+```
+
+Once we publish to PyPI:
 
 ```bash
 pip install mcp-jupyter-kernel
