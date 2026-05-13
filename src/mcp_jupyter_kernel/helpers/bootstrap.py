@@ -211,6 +211,12 @@ __mjk = _MjkHelpers
 
 
 def helper_call(method: str, *args: object) -> str:
-    """Build a kernel-side expression that calls one of the helpers and emits JSON."""
+    """Build a kernel-side expression that calls one of the helpers and emits JSON.
+
+    `default=str` makes json.dumps fall back to ``str(obj)`` for types it
+    doesn't know — Timestamps, Decimals, np.int64, etc. Without it,
+    inspect_auto on a DataFrame with datetime columns crashes with TypeError
+    and the agent gets `helper_output_unavailable`.
+    """
     parts = [repr(a) for a in args]
-    return f"print(__mjk_json.dumps(__mjk.{method}({', '.join(parts)})))"
+    return f"print(__mjk_json.dumps(__mjk.{method}({', '.join(parts)}), default=str))"

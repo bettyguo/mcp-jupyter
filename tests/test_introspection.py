@@ -73,6 +73,42 @@ async def test_inspect_auto_on_dataframe(session) -> None:
     assert len(payload["head"]) == 3
 
 
+async def test_inspect_auto_on_dataframe_with_datetime_column(session) -> None:
+    """Regression for C-2: inspect_auto on a DataFrame with non-JSON-serializable
+    types (datetimes, Decimals, etc.) crashed silently because to_dict(orient=
+    'records') returns Timestamp objects that json.dumps can't serialize.
+    """
+    from mcp_jupyter_kernel.helpers.bootstrap import helper_call
+    from mcp_jupyter_kernel.tools.kernel_ import _parse_helper_output
+
+    try:
+        import pandas  # noqa: F401
+    except ImportError:
+        pytest.skip("pandas not installed in this kernel")
+
+    await session.execute_code(
+        "local",
+        "import pandas as pd\n"
+        "df_ts = pd.DataFrame({\n"
+        "    'when': pd.date_range('2024-01-01', periods=3, freq='D'),\n"
+        "    'val': [1.0, 2.0, 3.0],\n"
+        "})",
+        timeout_s=10,
+    )
+    r = await session.execute_code(
+        "local", helper_call("inspect_auto", "df_ts"), timeout_s=10
+    )
+    payload = _parse_helper_output(r.outputs)
+    assert payload is not None, (
+        f"helper crashed serializing Timestamp. outputs: {r.outputs}"
+    )
+    assert payload["kind"] == "dataframe"
+    assert payload["shape"] == [3, 2]
+    # The 'when' column should appear in the head, serialized as a string.
+    assert len(payload["head"]) == 3
+    assert any("when" in row for row in payload["head"])
+
+
 async def test_inspect_summary_on_dataframe(session) -> None:
     from mcp_jupyter_kernel.helpers.bootstrap import helper_call
     from mcp_jupyter_kernel.tools.kernel_ import _parse_helper_output
