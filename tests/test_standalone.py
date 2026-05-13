@@ -111,3 +111,38 @@ async def test_inspect_auto_on_simple_dict(session) -> None:
     assert payload["kind"] == "dict"
     assert payload["len"] == 3
     assert set(payload["key_sample"]) == {"a", "b", "c"}
+
+
+async def test_execute_cell_persists_to_disk_with_notebook_path(tmp_path) -> None:
+    """Regression: execute_cell -> persist crashed when outputs were plain dicts.
+
+    nbformat.write requires NotebookNode-shaped outputs (attribute access for
+    `.output_type`). Our ExecutionState produces dicts; we now wrap them via
+    nb.to_outputs before assignment. This test guards that conversion.
+    """
+    import nbformat
+
+    from mcp_jupyter_kernel.config import StandaloneConfig
+    from mcp_jupyter_kernel.jupyter import nb as nb_helpers
+    from mcp_jupyter_kernel.jupyter.standalone import StandaloneSession
+
+    work_nb = tmp_path / "scratch.ipynb"
+    notebook = nb_helpers.new_notebook()
+    notebook.cells.append(nb_helpers.new_code_cell("print('hi'); 7"))
+    nb_helpers.write_notebook(notebook, work_nb)
+
+    s = StandaloneSession(StandaloneConfig(kernel_name="python3", notebook_path=str(work_nb)))
+    await s.start()
+    try:
+        r = await s.execute_cell("local", cell_index=0, timeout_s=15)
+        assert r.status == "ok"
+    finally:
+        await s.close()
+
+    # The notebook on disk is now a valid .ipynb that nbformat can re-read.
+    reloaded = nbformat.read(str(work_nb), as_version=4)
+    nbformat.validate(reloaded)
+    assert reloaded.cells[0].execution_count is not None
+    output_types = {o["output_type"] for o in reloaded.cells[0].outputs}
+    # Either stream (the print) or execute_result (the 7) — usually both.
+    assert output_types & {"stream", "execute_result"}

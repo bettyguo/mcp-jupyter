@@ -212,7 +212,9 @@ class StandaloneSession(KernelSession):
             )
         finally:
             self._current_cell_index = None
-        cell["outputs"] = result.outputs
+        # nbformat.write requires NotebookNode-shaped outputs (attribute
+        # access), not the raw dicts our ExecutionState produces.
+        cell["outputs"] = nb.to_outputs(result.outputs)
         cell["execution_count"] = result.execution_count
         self._notebook_dirty = True
         self._maybe_persist()

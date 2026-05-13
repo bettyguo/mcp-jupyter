@@ -37,3 +37,14 @@ def new_markdown_cell(source: str) -> Any:
 
 def new_notebook(metadata: dict[str, Any] | None = None) -> Any:
     return nbformat.v4.new_notebook(metadata=metadata or {})
+
+
+def to_outputs(raw: list[dict[str, Any]]) -> list[Any]:
+    """Convert plain dict outputs into nbformat NotebookNode form.
+
+    Our ExecutionState produces plain dicts (so the collector has no
+    dependency on nbformat). Before writing them back into a notebook on
+    disk, nbformat.write needs NotebookNode-shaped entries with attribute
+    access (it does `output.output_type` not `output['output_type']`).
+    """
+    return [nbformat.from_dict(o) for o in raw]
