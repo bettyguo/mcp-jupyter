@@ -141,8 +141,16 @@ async def main(notebook_path: Path) -> int:
             "display(fig)\n"
             "plt.close(fig)\n"
         )
-        md_call("cells.insert", {"notebook_id": nb_id, "after_index": -1, "code": "<plot code>"})
-        new_idx = await session.insert_cell(nb_id, after_index=len(cells) + 3, code=plot_code)
+        # Insert at the current end of the notebook. The session has executed
+        # 4 setup cells via the cell-index path; the in-memory notebook has
+        # grown beyond the original 5 fixture cells. Insert after the live tail.
+        live_cells = await session.read_cells(nb_id, n=1000)
+        after = len(live_cells) - 1
+        md_call(
+            "cells.insert",
+            {"notebook_id": nb_id, "after_index": after, "code": "<plot code>"},
+        )
+        new_idx = await session.insert_cell(nb_id, after_index=after, code=plot_code)
         print(f"\n_Inserted at index_: {new_idx}\n")
         md_call("execute.cell", {"notebook_id": nb_id, "cell_index": new_idx, "timeout_s": 30})
         r = await session.execute_cell(nb_id, cell_index=new_idx, timeout_s=30)

@@ -19,8 +19,8 @@ _result:_
 [
   {
     "notebook_id": "local",
-    "path": "C:\\Users\\jacob\\AppData\\Local\\Temp\\mjk-demo-itqk7hye\\customer_analysis.ipynb",
-    "kernel_id": "62637561\u2026",
+    "path": "C:\\Users\\jacob\\AppData\\Local\\Temp\\mjk-demo-bmmdxoyp\\customer_analysis.ipynb",
+    "kernel_id": "7f4f69a8\u2026",
     "kernel_status": "idle"
   }
 ]
@@ -253,13 +253,13 @@ _result (excerpt):_
 
 ## 5. Agent inserts a plot cell + runs it
 
-**→ `cells.insert(notebook_id='local', after_index=-1, code='<plot code>')`**
+**→ `cells.insert(notebook_id='local', after_index=4, code='<plot code>')`**
 
 _Inserted at index_: 5
 
 **→ `execute.cell(notebook_id='local', cell_index=5, timeout_s=30)`**
 
-_status_: `ok` _(wall 476 ms)_
+_status_: `ok` _(wall 459 ms)_
 
 
 ## 6. `plots.capture_last()` — agent looks at the rendered plot
