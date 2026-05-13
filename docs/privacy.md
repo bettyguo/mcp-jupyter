@@ -26,10 +26,11 @@ What can go wrong:
 - `head(5)` is the default `head` size. Configurable via a tool argument but server-side capped at 100.
 - `kernel.list_variables` returns names + types + sizes only, never values.
 
-### Output redaction (best-effort, documented)
+### Output redaction (planned for v0.2; helper exists, not wired)
 
 - A heuristic redactor scans tool output text for: AWS keys (`AKIA[0-9A-Z]{16}`), generic high-entropy tokens (`[A-Za-z0-9_\-]{32,}` after `key|token|secret|password|api`-prefixed labels), JWT-shaped strings. Hits are replaced with `<REDACTED:<type>>`.
-- **We document this is best-effort.** Determined leakage will get through. Telling users we have an airtight redactor would be a lie.
+- **Status (v0.1):** the `redact()` function exists in `src/mcp_jupyter_kernel/helpers/redact.py` and is unit-tested, but **no tool currently calls it.** Wiring it into the tool-return pipeline is a Phase-3 carry-over.
+- **When shipped, we'll document this is best-effort.** Determined leakage will get through. Telling users we have an airtight redactor would be a lie.
 
 ### Execution timeouts + cancellation
 
@@ -43,11 +44,11 @@ What can go wrong:
 - Server-mode writes go through Jupyter's `/api/contents` PUT, which is the same path Lab itself uses — keeps Lab and us in sync.
 - Pre-flight check: refuse to `cells.edit` / `cells.delete` if Lab's dirty-buffer state says there are unsaved user edits in the cell. Configurable opt-out (`--unsafe-write-over-unsaved`).
 
-### Audit log (optional but shipped in v1)
+### Audit log (planned for v0.2)
 
 - Configurable `audit_log: <path>` in the config. When enabled, every tool call appends a JSON line: `{timestamp, tool, args (with values truncated), returned_bytes, redactions_applied}`.
-- Disabled by default to keep the install surface minimal; turn-on is one config line.
-- Doc page in `docs/audit.md` walks privacy-conscious users through enabling it before the LLM gets anywhere near their data.
+- **Status (v0.1):** the config field exists and is loaded, but no tool currently emits to it. Schema described in [docs/audit.md](audit.md) is the target shape, not the current behavior.
+- Doc page `docs/audit.md` walks privacy-conscious users through enabling it (when it ships).
 
 ### JupyterHub isolation
 

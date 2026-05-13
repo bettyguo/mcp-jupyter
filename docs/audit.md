@@ -1,8 +1,13 @@
 # Audit log
 
-mcp-jupyter-kernel can log every tool call to a JSON-lines file for privacy review.
+> **Status: planned, not yet implemented.** The `PrivacyConfig.audit_log`
+> config field exists and is loaded, but no tool currently emits to it. This
+> doc describes the v0.1 design — it ships in v0.2. Tracked as a Phase-3
+> roadmap item. See [Phase 3 roadmap](#) section "Carry-over from audit."
 
-**Default: off.** Tool calls don't write anywhere. Enable explicitly.
+mcp-jupyter-kernel will log every tool call to a JSON-lines file for privacy review.
+
+**Default: off.** Tool calls don't write anywhere. Enable explicitly (once shipped).
 
 ## Enabling
 

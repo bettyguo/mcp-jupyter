@@ -100,9 +100,13 @@ def list_variables():
 
 Notice: `summary` is a one-line text fragment like `"DataFrame[10000×6]"`, never an actual value. This is the rule.
 
-## Output redaction
+## Output redaction (planned for v0.2)
 
-The redactor runs on every tool's text fields before returning to the agent:
+> **Status:** the `redact()` function exists and is unit-tested in
+> `src/mcp_jupyter_kernel/helpers/redact.py`, but no tool currently
+> calls it. The pipeline described here is the v0.2 target.
+
+When wired, the redactor runs on every tool's text fields before returning to the agent:
 
 - AWS keys: `AKIA[0-9A-Z]{16}` → `<REDACTED:aws_key>`
 - Anthropic/OpenAI keys: `sk-[A-Za-z0-9_\-]{20,}` → `<REDACTED:llm_key>`
@@ -124,9 +128,12 @@ This is heuristic; we document it as such. Determined leakage gets through.
 
 Truncation is always visible to the agent — we never silently drop data.
 
-## Audit log entry shape
+## Audit log entry shape (planned for v0.2)
 
-When `privacy.audit_log: <path>` is set, every tool call appends a JSON line:
+> **Status:** config field `privacy.audit_log` is parsed; no code emits.
+> Target schema below.
+
+When `privacy.audit_log: <path>` is set, every tool call will append a JSON line:
 
 ```json
 {
