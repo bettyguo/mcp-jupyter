@@ -2,8 +2,6 @@
 
 > The kernel-aware Jupyter MCP server. Your agent sees your variables, not just your `.ipynb` JSON.
 
-**Status:** Pre-alpha — Phase 0 complete, design starts next. Not usable yet. See [STATUS.md](STATUS.md).
-
 `mcp-jupyter` is an [MCP](https://modelcontextprotocol.io) server focused on what existing Jupyter MCP servers don't do: surface **live kernel state** to the agent. Variables, dataframe summaries, plot images, tracebacks — the stuff your agent actually needs to reason about your notebook.
 
 Existing Jupyter MCP servers (notably [Datalayer's `jupyter-mcp-server`](https://github.com/datalayer/jupyter-mcp-server), the production leader) cover cell CRUD and execution well. They don't proactively surface kernel state. They also assume you have a Jupyter server running. We fill both gaps.
