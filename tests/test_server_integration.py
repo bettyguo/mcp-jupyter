@@ -165,6 +165,27 @@ async def test_create_session_then_list_and_execute(server_session, jupyter_test
         result_outs = [o for o in result.outputs if o["output_type"] == "execute_result"]
         assert result_outs, f"no execute_result in outputs: {result.outputs}"
         assert result_outs[-1]["data"].get("text/plain") == "42"
+
+        # D-1 regression: after execute_cell PUTs the notebook back, the
+        # persisted .ipynb on disk must re-validate via nbformat. If we wrote
+        # raw ExecutionState dicts that don't match the nbformat schema, this
+        # GET would still succeed but a stricter nbformat.validate call would
+        # raise — guard against that.
+        async with httpx.AsyncClient() as http:
+            r = await http.get(
+                f"{base}/api/contents/{nb_path}?content=1", headers=headers
+            )
+            r.raise_for_status()
+            persisted = r.json()
+        import nbformat
+
+        nb_node = nbformat.from_dict(persisted["content"])
+        nbformat.validate(nb_node)
+        # The executed cell should have execution_count set and at least one output.
+        assert nb_node.cells[0].execution_count is not None
+        assert nb_node.cells[0].outputs, "outputs lost on round-trip through PUT"
+        output_types = {o["output_type"] for o in nb_node.cells[0].outputs}
+        assert "execute_result" in output_types
     finally:
         # Clean up.
         async with httpx.AsyncClient() as http:
