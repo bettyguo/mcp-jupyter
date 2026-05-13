@@ -29,6 +29,7 @@ import websockets
 
 from ..auth import auth_headers, resolve_token
 from ..config import JupyterConfig
+from ..helpers.bootstrap import KERNEL_HELPER_SRC
 from . import nb
 from .output import ExecutionState
 from .session import ExecuteResult, KernelSession, NotebookHandle
@@ -54,6 +55,9 @@ class ServerSession(KernelSession):
         self._last_error: dict[str, Any] | None = None
         # Serialize execution within a single kernel.
         self._locks: dict[str, asyncio.Lock] = {}
+        # Kernel IDs that have had the __mjk helper namespace injected. Bootstrap
+        # is per-kernel because one ServerSession can span multiple kernels.
+        self._bootstrapped: set[str] = set()
 
     # ---------- REST ----------
 
@@ -244,6 +248,27 @@ class ServerSession(KernelSession):
 
     # ---------- WebSocket execution ----------
 
+    async def _bootstrap_helpers(self, kernel_id: str) -> None:
+        """Inject the __mjk helper namespace into the kernel once.
+
+        kernel.list_variables and inspect tools all build kernel-side
+        expressions that reference `__mjk` and `__mjk_json`. Without this
+        bootstrap they fail with NameError on the first call.
+        """
+        if kernel_id in self._bootstrapped:
+            return
+        # Mark first so the recursive _execute_via_ws_raw call doesn't re-enter
+        # via execute_code's bootstrap check (it doesn't today, but this keeps
+        # the invariant defensive).
+        self._bootstrapped.add(kernel_id)
+        await self._execute_via_ws_raw(
+            kernel_id,
+            KERNEL_HELPER_SRC,
+            timeout_s=10,
+            silent=True,
+            store_history=False,
+        )
+
     async def _execute_via_ws(
         self,
         notebook_id: str,
@@ -253,6 +278,19 @@ class ServerSession(KernelSession):
         store_history: bool,
     ) -> ExecuteResult:
         kernel_id = self._cached_kernel(notebook_id)
+        await self._bootstrap_helpers(kernel_id)
+        return await self._execute_via_ws_raw(
+            kernel_id, code, timeout_s, silent, store_history
+        )
+
+    async def _execute_via_ws_raw(
+        self,
+        kernel_id: str,
+        code: str,
+        timeout_s: int,
+        silent: bool,
+        store_history: bool,
+    ) -> ExecuteResult:
         lock = self._locks.setdefault(kernel_id, asyncio.Lock())
         async with lock:
             ws = await self._ensure_ws(kernel_id)

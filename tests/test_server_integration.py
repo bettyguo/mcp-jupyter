@@ -38,6 +38,76 @@ async def test_list_notebooks_on_empty_server_returns_empty_list(server_session)
         assert h.kernel_id
 
 
+async def test_server_session_bootstraps_mjk_helpers(
+    server_session, jupyter_test_url, jupyter_test_token
+) -> None:
+    """Regression for C-1: ServerSession must inject __mjk before tool calls.
+
+    Without the bootstrap, kernel.list_variables / inspect tools fail because
+    __mjk doesn't exist in the kernel namespace — silently returning None
+    payloads to the agent.
+    """
+    import httpx
+
+    from mcp_jupyter_kernel.helpers.bootstrap import helper_call
+    from mcp_jupyter_kernel.tools.kernel_ import _parse_helper_output
+
+    base = jupyter_test_url.rstrip("/")
+    headers = {"Authorization": f"token {jupyter_test_token}"}
+    nb_path = "mjk_bootstrap_test.ipynb"
+    async with httpx.AsyncClient() as http:
+        await http.put(
+            f"{base}/api/contents/{nb_path}",
+            json={
+                "type": "notebook",
+                "format": "json",
+                "content": {
+                    "cells": [],
+                    "metadata": {"kernelspec": {"name": "python3", "display_name": "Python 3"}},
+                    "nbformat": 4,
+                    "nbformat_minor": 5,
+                },
+            },
+            headers=headers,
+        )
+        r = await http.post(
+            f"{base}/api/sessions",
+            json={
+                "path": nb_path,
+                "name": nb_path,
+                "type": "notebook",
+                "kernel": {"name": "python3"},
+            },
+            headers=headers,
+        )
+        sess = r.json()
+
+    try:
+        handles = await server_session.list_notebooks()
+        match = [h for h in handles if h.notebook_id == sess["id"]]
+        assert match, f"session {sess['id']} not in list"
+        nb_id = match[0].notebook_id
+
+        # Define a variable, then call list_variables via the helper path.
+        # If __mjk isn't bootstrapped, the helper print fails (NameError) and
+        # _parse_helper_output returns None.
+        await server_session.execute_code(nb_id, "test_var_xyz = 42", timeout_s=15)
+        r = await server_session.execute_code(
+            nb_id, helper_call("list_variables"), timeout_s=15
+        )
+        payload = _parse_helper_output(r.outputs)
+        assert payload is not None, (
+            f"helper bootstrap likely missing — __mjk not in kernel. "
+            f"outputs: {r.outputs}"
+        )
+        names = {v["name"] for v in payload}
+        assert "test_var_xyz" in names
+    finally:
+        async with httpx.AsyncClient() as http:
+            await http.delete(f"{base}/api/sessions/{sess['id']}", headers=headers)
+            await http.delete(f"{base}/api/contents/{nb_path}", headers=headers)
+
+
 async def test_create_session_then_list_and_execute(server_session, jupyter_test_url, jupyter_test_token) -> None:
     """Full M1+M2 path: create a notebook + session via REST, then list, read, execute."""
     import httpx

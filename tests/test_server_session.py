@@ -356,6 +356,9 @@ async def test_execute_code_via_mocked_ws(session) -> None:
         )
     )
     await session.list_notebooks()
+    # FakeWebSocket only scripts the test sequence; pre-mark the kernel as
+    # bootstrapped so _execute_via_ws skips its helper-injection call.
+    session._bootstrapped.add("k-1")
 
     # Patch _ensure_ws to return our scripted fake.
     fake = FakeWebSocket(_ws_messages_for_one_plus_one())
@@ -399,6 +402,7 @@ async def test_execute_code_error_status_propagates(session) -> None:
         )
     )
     await session.list_notebooks()
+    session._bootstrapped.add("k-1")
 
     error_seq = [
         {"channel": "iopub", "msg_type": "status", "content": {"execution_state": "busy"}},
