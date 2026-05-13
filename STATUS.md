@@ -108,8 +108,9 @@ Only the hero GIF remains in Phase 3. Cannot be generated autonomously.
 
 1. Record the hero GIF. Replace the placeholder in README.
 2. Live-run the killer demo: install into Claude Desktop, open the sample notebook in Lab, ask Claude to inspect `customer_df`. Smoke check.
-3. PyPI publish.
+3. PyPI publish (v0.1.0). Bump `pyproject.toml` from `0.0.1` → `0.1.0`.
 4. Then execute the launch runbook in [docs/launch.md](docs/launch.md).
+5. v0.2.0 work per [docs/roadmap.md](docs/roadmap.md) — Tier 1 items (redactor + audit + WS reconnect).
 
 ## Hours spent
 
